@@ -12,7 +12,7 @@ This guide will help you deploy DeepLX and make your first translation request.
     The fastest way to run DeepLX is using Docker:
 
     ```bash
-    docker run -d -p 1188:1188 missuo/deeplx
+    docker run -d -p 1188:1188 ghcr.io/owo-network/deeplx:latest
     ```
 
     This starts DeepLX on port 1188 (default) listening on all interfaces.
@@ -30,12 +30,12 @@ This guide will help you deploy DeepLX and make your first translation request.
 
       **Example with authentication:**
       ```bash
-      docker run -d -p 1188:1188 -e TOKEN=your_secret_token missuo/deeplx
+      docker run -d -p 1188:1188 -e TOKEN=your_secret_token ghcr.io/owo-network/deeplx:latest
       ```
 
       **Example with custom port:**
       ```bash
-      docker run -d -p 9000:9000 -e PORT=9000 missuo/deeplx
+      docker run -d -p 9000:9000 -e PORT=9000 ghcr.io/owo-network/deeplx:latest
       ```
     </Accordion>
   </Step>

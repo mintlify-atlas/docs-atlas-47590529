@@ -1,0 +1,76 @@
+{
+  "projectType": "api-service",
+  "projectName": "DeepLX",
+  "projectDescription": "Powerful free DeepL translation API with no token required",
+  "theme": "palm",
+  "primaryColor": "#7c7c7c",
+  "lightColor": "#060606",
+  "darkColor": "#c4c4c4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/docker",
+              "deployment/binary",
+              "deployment/systemd"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment-variables",
+              "configuration/command-flags",
+              "configuration/authentication"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api-reference/free-endpoint",
+              "api-reference/pro-endpoint",
+              "api-reference/official-format"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "api-reference/response-format",
+              "api-reference/error-handling"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Free DeepL translation API without official token",
+    "Multiple API endpoints (Free, Pro, Official format)",
+    "Docker and binary deployment options",
+    "Optional authentication with access tokens",
+    "Language auto-detection",
+    "Translation alternatives support",
+    "Proxy support for restricted regions"
+  ],
+  "publicApiSurface": [
+    "POST /translate - Free translation endpoint",
+    "POST /v1/translate - Pro translation endpoint (requires dl_session)",
+    "POST /v2/translate - Official DeepL API format",
+    "GET / - Service information"
+  ]
+}

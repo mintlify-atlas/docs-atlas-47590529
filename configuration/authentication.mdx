@@ -1,0 +1,257 @@
+---
+title: Authentication
+description: Secure your DeepLX instance with token authentication
+---
+
+DeepLX supports optional token-based authentication to protect your translation API from unauthorized access. When enabled, all requests to translation endpoints must include a valid access token.
+
+## Enabling Authentication
+
+Authentication is controlled by the `TOKEN` configuration option. If no token is set, the API is publicly accessible.
+
+<CodeGroup>
+```bash Environment Variable
+export TOKEN="your-secret-token-here"
+./deeplx
+```
+
+```bash Command-Line Flag
+./deeplx -token "your-secret-token-here"
+```
+
+```bash Docker
+docker run -d \
+  -e TOKEN="your-secret-token-here" \
+  -p 1188:1188 \
+  ghcr.io/owo-network/deeplx:latest
+```
+</CodeGroup>
+
+<Info>
+When a token is configured, DeepLX will print "Access token is set." during startup.
+</Info>
+
+## How Authentication Works
+
+The authentication middleware (`authMiddleware` in service/service.go:29-61) validates tokens on all protected endpoints:
+
+- `/translate` (Free API)
+- `/v1/translate` (Pro API)
+- `/v2/translate` (Official format compatible API)
+
+### Token Validation Process
+
+1. If `TOKEN` is not configured, all requests are allowed
+2. If `TOKEN` is configured, the middleware checks for the token in two locations:
+   - **Query parameter:** `?token=xxx`
+   - **Authorization header:** `Authorization: Bearer xxx` or `Authorization: DeepL-Auth-Key xxx`
+3. If neither matches the configured token, a `401 Unauthorized` response is returned
+
+## Client Authentication Methods
+
+### Method 1: Query Parameter
+
+Append the token as a query parameter to the request URL.
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:1188/translate?token=your-secret-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "ZH"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:1188/translate"
+params = {"token": "your-secret-token-here"}
+data = {
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "ZH"
+}
+
+response = requests.post(url, params=params, json=data)
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:1188/translate?token=your-secret-token-here', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    text: 'Hello, world!',
+    source_lang: 'EN',
+    target_lang: 'ZH'
+  })
+});
+
+const result = await response.json();
+console.log(result);
+```
+</CodeGroup>
+
+### Method 2: Bearer Token Header
+
+Include the token in the `Authorization` header using the Bearer token format.
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:1188/translate" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-secret-token-here" \
+  -d '{
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "ZH"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:1188/translate"
+headers = {
+    "Authorization": "Bearer your-secret-token-here",
+    "Content-Type": "application/json"
+}
+data = {
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "ZH"
+}
+
+response = requests.post(url, headers=headers, json=data)
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:1188/translate', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer your-secret-token-here'
+  },
+  body: JSON.stringify({
+    text: 'Hello, world!',
+    source_lang: 'EN',
+    target_lang: 'ZH'
+  })
+});
+
+const result = await response.json();
+console.log(result);
+```
+</CodeGroup>
+
+### Method 3: DeepL-Auth-Key Header
+
+For compatibility with DeepL's official API format, you can use the `DeepL-Auth-Key` prefix instead of `Bearer`.
+
+<CodeGroup>
+```bash cURL
+curl -X POST "http://localhost:1188/translate" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: DeepL-Auth-Key your-secret-token-here" \
+  -d '{
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "ZH"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:1188/translate"
+headers = {
+    "Authorization": "DeepL-Auth-Key your-secret-token-here",
+    "Content-Type": "application/json"
+}
+data = {
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "ZH"
+}
+
+response = requests.post(url, headers=headers, json=data)
+print(response.json())
+```
+</CodeGroup>
+
+## Authorization Header Format
+
+The middleware supports two header formats:
+
+1. **Bearer token:** `Authorization: Bearer <token>`
+2. **DeepL Auth Key:** `Authorization: DeepL-Auth-Key <token>`
+
+<Note>
+The header must contain exactly two space-separated parts. The first part must be either `Bearer` or `DeepL-Auth-Key`, followed by the token.
+</Note>
+
+Invalid formats that will be rejected:
+- `Authorization: your-token` (missing prefix)
+- `Authorization: InvalidPrefix your-token` (invalid prefix)
+- `Authorization: Bearer token with spaces` (too many parts)
+
+## Unauthorized Response
+
+If authentication fails, the API returns a `401 Unauthorized` response:
+
+```json
+{
+  "code": 401,
+  "message": "Invalid access token"
+}
+```
+
+## Security Best Practices
+
+<Warning>
+**Important security recommendations:**
+
+1. **Use strong tokens:** Generate cryptographically secure random tokens
+2. **Keep tokens secret:** Never commit tokens to version control
+3. **Use HTTPS:** Always deploy with TLS/SSL in production to prevent token interception
+4. **Rotate tokens:** Periodically change your access token
+5. **Restrict network access:** Use firewall rules or reverse proxy to limit who can reach your instance
+</Warning>
+
+### Generating Secure Tokens
+
+<CodeGroup>
+```bash OpenSSL
+# Generate a random 32-byte token
+openssl rand -hex 32
+```
+
+```bash Python
+# Generate a secure token
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+
+```bash Node.js
+# Generate a secure token
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+</CodeGroup>
+
+## Disabling Authentication
+
+To disable authentication, simply don't set the `TOKEN` configuration:
+
+```bash
+# No authentication - API is publicly accessible
+./deeplx -ip 0.0.0.0 -port 1188
+```
+
+<Warning>
+Running without authentication on a public network exposes your instance to abuse. Only do this in trusted environments or behind additional authentication layers.
+</Warning>

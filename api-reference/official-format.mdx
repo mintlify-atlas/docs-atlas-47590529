@@ -1,0 +1,230 @@
+---
+title: 'POST /v2/translate'
+description: 'Translation endpoint compatible with official DeepL API format'
+---
+
+## Endpoint
+
+```
+POST /v2/translate
+```
+
+This endpoint provides compatibility with the official DeepL API format. It accepts both JSON and form-encoded requests and returns responses in the official DeepL API structure.
+
+## Authentication
+
+If an access token is configured on the server, include it in one of the following ways:
+
+<Tabs>
+  <Tab title="Query Parameter">
+    ```bash
+    POST /v2/translate?token=your_access_token
+    ```
+  </Tab>
+  <Tab title="Authorization Header">
+    ```bash
+    Authorization: Bearer your_access_token
+    # or
+    Authorization: DeepL-Auth-Key your_access_token
+    ```
+  </Tab>
+</Tabs>
+
+## Request Body
+
+This endpoint accepts requests in two formats:
+
+<Tabs>
+  <Tab title="JSON Format">
+    <ParamField body="text" type="array" required>
+      Array of text strings to be translated. Multiple texts will be joined with newlines.
+    </ParamField>
+
+    <ParamField body="target_lang" type="string" required>
+      The target language code (e.g., "EN", "DE", "FR", "ZH").
+    </ParamField>
+
+    <ParamField body="source_lang" type="string">
+      The source language code. Omit or leave empty for automatic detection.
+    </ParamField>
+
+    <ParamField body="tag_handling" type="string">
+      Specifies how to handle tags in the text. Allowed values: `html` or `xml`.
+    </ParamField>
+  </Tab>
+  
+  <Tab title="Form Data">
+    <ParamField body="text" type="string" required>
+      The text to be translated (form-encoded).
+    </ParamField>
+
+    <ParamField body="target_lang" type="string" required>
+      The target language code (e.g., "EN", "DE", "FR", "ZH").
+    </ParamField>
+  </Tab>
+</Tabs>
+
+## Response
+
+The response follows the official DeepL API format:
+
+<ResponseField name="translations" type="array">
+  Array of translation objects
+  
+  <ResponseField name="detected_source_language" type="string">
+    The detected or specified source language
+  </ResponseField>
+  
+  <ResponseField name="text" type="string">
+    The translated text
+  </ResponseField>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+```bash cURL (JSON)
+curl -X POST http://localhost:1188/v2/translate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": ["Hello, world!", "How are you?"],
+    "target_lang": "DE"
+  }'
+```
+
+```bash cURL (Form Data)
+curl -X POST http://localhost:1188/v2/translate \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "text=Hello, world!" \
+  -d "target_lang=DE"
+```
+
+```bash cURL with Token
+curl -X POST http://localhost:1188/v2/translate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_access_token" \
+  -d '{
+    "text": ["Hello, world!"],
+    "target_lang": "DE"
+  }'
+```
+
+```bash cURL with Source Language
+curl -X POST http://localhost:1188/v2/translate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": ["Hello, world!"],
+    "source_lang": "EN",
+    "target_lang": "DE"
+  }'
+```
+
+```python Python (JSON)
+import requests
+
+url = "http://localhost:1188/v2/translate"
+payload = {
+    "text": ["Hello, world!", "How are you?"],
+    "target_lang": "DE"
+}
+
+response = requests.post(url, json=payload)
+print(response.json())
+```
+
+```python Python (Form Data)
+import requests
+
+url = "http://localhost:1188/v2/translate"
+data = {
+    "text": "Hello, world!",
+    "target_lang": "DE"
+}
+
+response = requests.post(url, data=data)
+print(response.json())
+```
+
+```javascript JavaScript
+fetch('http://localhost:1188/v2/translate', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    text: ['Hello, world!'],
+    target_lang: 'DE'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "translations": [
+    {
+      "detected_source_language": "EN",
+      "text": "Hallo, Welt!\nWie geht es dir?"
+    }
+  ]
+}
+```
+
+## Error Responses
+
+<Accordion title="400 Bad Request - Invalid Payload">
+  ```json
+  {
+    "code": 400,
+    "message": "Invalid request payload"
+  }
+  ```
+  
+  Returned when the request body cannot be parsed or required fields are missing.
+</Accordion>
+
+<Accordion title="401 Unauthorized - Invalid Token">
+  ```json
+  {
+    "code": 401,
+    "message": "Invalid access token"
+  }
+  ```
+  
+  Returned when the provided access token doesn't match the server configuration.
+</Accordion>
+
+<Accordion title="429 Too Many Requests">
+  ```json
+  {
+    "code": 429,
+    "message": "Too many requests"
+  }
+  ```
+  
+  Returned when rate limits are exceeded.
+</Accordion>
+
+## Notes
+
+- **Official Format Compatibility:** This endpoint mimics the official DeepL API response structure
+- **Multiple Text Support:** When using JSON format with an array of texts, they are joined with newlines
+- **Automatic Language Detection:** Source language is automatically detected when not specified
+- **Form Data Support:** Both `application/json` and `application/x-www-form-urlencoded` content types are supported
+- **Free API Backend:** This endpoint uses the DeepL free API (no Pro account required)
+- The response structure matches the official DeepL API for easy migration and compatibility
+
+## Comparison with Official DeepL API
+
+This endpoint is designed to be a drop-in replacement for the official DeepL API `/v2/translate` endpoint:
+
+- ✅ Same request format (JSON and form data)
+- ✅ Same response structure
+- ✅ Compatible with official DeepL client libraries
+- ✅ Supports same authentication methods (Bearer token, DeepL-Auth-Key)
+- ⚠️ Uses free API backend instead of paid API
+- ⚠️ May have different rate limits and quotas

@@ -1,0 +1,230 @@
+---
+title: Binary Installation
+description: Install DeepLX as a standalone binary on Linux systems
+---
+
+## Binary Installation
+
+DeepLX can be installed as a standalone binary on Linux systems using the automated installation script or manual download.
+
+### Automated Installation
+
+The easiest way to install DeepLX is using the official installation script.
+
+<Steps>
+  <Step title="Download and run the installation script">
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/OwO-Network/DeepLX/main/install.sh | bash
+    ```
+
+    <Note>
+      This script requires root/sudo access to install the binary to `/usr/bin/` and set up the systemd service.
+    </Note>
+  </Step>
+
+  <Step title="Verify installation">
+    The script automatically:
+    - Detects the latest DeepLX version from GitHub releases
+    - Downloads `deeplx_linux_amd64` to `/usr/bin/deeplx`
+    - Makes the binary executable
+    - Downloads and installs the systemd service file
+    - Enables and starts the DeepLX service
+
+    ```bash
+    systemctl status deeplx
+    ```
+  </Step>
+
+  <Step title="Access the service">
+    DeepLX is now listening on `0.0.0.0:1188`
+
+    ```bash
+    curl http://localhost:1188
+    ```
+  </Step>
+</Steps>
+
+### Manual Installation
+
+For more control over the installation process, you can manually download and install DeepLX.
+
+<Steps>
+  <Step title="Download the latest release">
+    Visit the [GitHub Releases page](https://github.com/OwO-Network/DeepLX/releases/latest) or download directly:
+
+    ```bash
+    # Get the latest version
+    VERSION=$(curl -s https://api.github.com/repos/OwO-Network/DeepLX/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+    # Download the binary
+    wget https://github.com/OwO-Network/DeepLX/releases/download/${VERSION}/deeplx_linux_amd64
+    ```
+
+    <Note>
+      Replace `deeplx_linux_amd64` with your platform's binary if using a different architecture.
+    </Note>
+  </Step>
+
+  <Step title="Install the binary">
+    ```bash
+    # Move to system binary directory
+    sudo mv deeplx_linux_amd64 /usr/bin/deeplx
+
+    # Make executable
+    sudo chmod +x /usr/bin/deeplx
+    ```
+  </Step>
+
+  <Step title="Run DeepLX">
+    ```bash
+    deeplx
+    ```
+
+    The service will start on the default port `1188`.
+  </Step>
+</Steps>
+
+## Installation Script Details
+
+The `install.sh` script performs the following operations:
+
+```bash install.sh
+install_deeplx(){
+    # Fetch latest version from GitHub API
+    last_version=$(curl -Ls "https://api.github.com/repos/OwO-Network/DeepLX/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    
+    # Download binary to /usr/bin/deeplx
+    wget -q -N --no-check-certificate -O /usr/bin/deeplx https://github.com/OwO-Network/DeepLX/releases/download/${last_version}/deeplx_linux_amd64
+
+    # Make executable
+    chmod +x /usr/bin/deeplx
+    
+    # Download systemd service file
+    wget -q -N --no-check-certificate -O /etc/systemd/system/deeplx.service https://raw.githubusercontent.com/OwO-Network/DeepLX/main/deeplx.service
+    
+    # Enable and start service
+    systemctl daemon-reload
+    systemctl enable deeplx
+    systemctl start deeplx
+}
+```
+
+<Warning>
+  The installation script may fail if GitHub API rate limits are exceeded. If this occurs, wait a few minutes and try again, or use the manual installation method.
+</Warning>
+
+## Command-Line Options
+
+DeepLX supports several command-line flags for configuration:
+
+| Flag | Short | Description | Default | Example |
+|------|-------|-------------|---------|----------|
+| `--ip` | `-i` | IP address to bind to | `0.0.0.0` | `--ip 127.0.0.1` |
+| `--port` | `-p` | Port to listen on | `1188` | `--port 8080` |
+| `--token` | - | Access token for `/translate` endpoint | - | `--token mytoken` |
+| `-s` | - | DeepL session for `/v1/translate` endpoint | - | `-s session_id` |
+| `--proxy` | - | HTTP proxy URL for requests | - | `--proxy http://proxy:8080` |
+
+### Usage Examples
+
+<CodeGroup>
+  ```bash Default Configuration
+  deeplx
+  # Listens on 0.0.0.0:1188
+  ```
+
+  ```bash Custom Port
+  deeplx --port 8080
+  # or
+  deeplx -p 8080
+  ```
+
+  ```bash Custom IP and Port
+  deeplx --ip 127.0.0.1 --port 8080
+  ```
+
+  ```bash With Authentication
+  deeplx --token mytoken123
+  ```
+
+  ```bash With DeepL Session
+  deeplx -s your_session_id
+  ```
+
+  ```bash With Proxy
+  deeplx --proxy http://proxy.example.com:8080
+  ```
+
+  ```bash Full Configuration
+  deeplx --ip 0.0.0.0 --port 1188 --token mytoken -s session_id --proxy http://proxy:8080
+  ```
+</CodeGroup>
+
+## Environment Variables
+
+Alternatively, you can configure DeepLX using environment variables:
+
+```bash
+export IP="0.0.0.0"
+export PORT="1188"
+export TOKEN="your_token"
+export DL_SESSION="your_session"
+export PROXY="http://proxy:8080"
+
+deeplx
+```
+
+<Note>
+  Command-line flags take precedence over environment variables if both are set.
+</Note>
+
+## Binary Locations
+
+| Component | Path | Description |
+|-----------|------|-------------|
+| Binary | `/usr/bin/deeplx` | Main executable |
+| Service File | `/etc/systemd/system/deeplx.service` | systemd service configuration |
+| Working Directory | `/usr/bin/` | Runtime working directory |
+
+## Upgrading
+
+To upgrade to the latest version:
+
+<Steps>
+  <Step title="Stop the service">
+    ```bash
+    sudo systemctl stop deeplx
+    ```
+  </Step>
+
+  <Step title="Run the installation script again">
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/OwO-Network/DeepLX/main/install.sh | bash
+    ```
+  </Step>
+
+  <Step title="Verify the new version">
+    ```bash
+    systemctl status deeplx
+    ```
+  </Step>
+</Steps>
+
+## Uninstallation
+
+To remove DeepLX from your system:
+
+```bash
+# Stop and disable the service
+sudo systemctl stop deeplx
+sudo systemctl disable deeplx
+
+# Remove the binary
+sudo rm /usr/bin/deeplx
+
+# Remove the service file
+sudo rm /etc/systemd/system/deeplx.service
+
+# Reload systemd
+sudo systemctl daemon-reload
+```

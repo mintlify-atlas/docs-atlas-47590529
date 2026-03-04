@@ -1,0 +1,185 @@
+---
+title: Docker Deployment
+description: Deploy DeepLX using Docker or Docker Compose
+---
+
+## Docker Deployment
+
+DeepLX can be deployed using Docker with either the pre-built image or by building from source.
+
+### Using Pre-built Image
+
+The official Docker image is available on GitHub Container Registry.
+
+<Steps>
+  <Step title="Pull the Docker image">
+    ```bash
+    docker pull ghcr.io/owo-network/deeplx:latest
+    ```
+  </Step>
+
+  <Step title="Run the container">
+    ```bash
+    docker run -d -p 1188:1188 ghcr.io/owo-network/deeplx:latest
+    ```
+
+    <Note>
+      The service will be available at `http://localhost:1188`
+    </Note>
+  </Step>
+
+  <Step title="Run with environment variables (optional)">
+    ```bash
+    docker run -d \
+      -p 1188:1188 \
+      -e TOKEN=your_token \
+      -e DL_SESSION=your_session \
+      ghcr.io/owo-network/deeplx:latest
+    ```
+  </Step>
+</Steps>
+
+### Using Docker Compose
+
+For easier management, use Docker Compose with the provided configuration.
+
+<Steps>
+  <Step title="Create compose.yaml file">
+    ```yaml compose.yaml
+    services:
+      deeplx:
+        image: ghcr.io/owo-network/deeplx:latest
+        restart: always
+        ports:
+          - "1188:1188"
+        # environment:
+          # - TOKEN=helloworld
+          # - DL_SESSION=xxxxxx
+    ```
+  </Step>
+
+  <Step title="Start the service">
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+
+  <Step title="Check the logs">
+    ```bash
+    docker compose logs -f deeplx
+    ```
+  </Step>
+</Steps>
+
+### Building from Source
+
+You can build your own Docker image using the provided Dockerfile.
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/OwO-Network/DeepLX.git
+    cd DeepLX
+    ```
+  </Step>
+
+  <Step title="Build the Docker image">
+    The Dockerfile uses a multi-stage build process:
+
+    ```dockerfile Dockerfile
+    FROM golang:1.24.2 AS builder
+    WORKDIR /go/src/github.com/OwO-Network/DeepLX
+    COPY . .
+    RUN go get -d -v ./
+    RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o deeplx .
+
+    FROM alpine:latest
+    WORKDIR /app
+    COPY --from=builder /go/src/github.com/OwO-Network/DeepLX/deeplx /app/deeplx
+    CMD ["/app/deeplx"]
+    ```
+
+    Build the image:
+    ```bash
+    docker build -t deeplx:custom .
+    ```
+  </Step>
+
+  <Step title="Run your custom image">
+    ```bash
+    docker run -d -p 1188:1188 deeplx:custom
+    ```
+  </Step>
+</Steps>
+
+## Environment Variables
+
+DeepLX supports the following environment variables for configuration:
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|----------|
+| `IP` | IP address to bind to | `0.0.0.0` | `127.0.0.1` |
+| `PORT` | Port to listen on | `1188` | `8080` |
+| `TOKEN` | Access token for `/translate` endpoint | - | `helloworld` |
+| `DL_SESSION` | DeepL session for `/v1/translate` endpoint | - | `your_session_id` |
+| `PROXY` | HTTP proxy URL for requests | - | `http://proxy:8080` |
+
+<Warning>
+  When using environment variables in Docker Compose, uncomment the `environment` section in `compose.yaml` and set your values.
+</Warning>
+
+## Port Configuration
+
+By default, DeepLX listens on port `1188`. To use a different port:
+
+<Tabs>
+  <Tab title="Docker Run">
+    ```bash
+    docker run -d \
+      -p 8080:1188 \
+      ghcr.io/owo-network/deeplx:latest
+    ```
+    Access at `http://localhost:8080`
+  </Tab>
+
+  <Tab title="Docker Compose">
+    ```yaml
+    services:
+      deeplx:
+        image: ghcr.io/owo-network/deeplx:latest
+        restart: always
+        ports:
+          - "8080:1188"
+    ```
+  </Tab>
+
+  <Tab title="Environment Variable">
+    ```bash
+    docker run -d \
+      -p 8080:8080 \
+      -e PORT=8080 \
+      ghcr.io/owo-network/deeplx:latest
+    ```
+  </Tab>
+</Tabs>
+
+## Container Management
+
+<CodeGroup>
+  ```bash Stop Container
+  docker compose down
+  ```
+
+  ```bash View Logs
+  docker compose logs -f deeplx
+  ```
+
+  ```bash Restart Container
+  docker compose restart deeplx
+  ```
+
+  ```bash Update Image
+  docker compose pull
+  docker compose up -d
+  ```
+</CodeGroup>

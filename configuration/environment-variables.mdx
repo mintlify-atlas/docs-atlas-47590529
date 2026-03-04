@@ -1,0 +1,120 @@
+---
+title: Environment Variables
+description: Configure DeepLX using environment variables
+---
+
+DeepLX supports configuration through environment variables. These variables are read during initialization and can be overridden by command-line flags.
+
+## Server Configuration
+
+<ParamField path="IP" type="string" default="0.0.0.0">
+  The IP address to bind the server to. Use `0.0.0.0` to listen on all network interfaces, or specify a specific IP address to restrict access.
+
+  **Example:**
+  ```bash
+  export IP="127.0.0.1"
+  ```
+</ParamField>
+
+<ParamField path="PORT" type="integer" default="1188">
+  The port number the server will listen on. Must be a valid port number between 1 and 65535.
+
+  **Example:**
+  ```bash
+  export PORT=8080
+  ```
+</ParamField>
+
+## Authentication
+
+<ParamField path="TOKEN" type="string" default="">
+  Access token for authenticating requests to the `/translate`, `/v1/translate`, and `/v2/translate` endpoints. When set, clients must provide this token either as a query parameter or in the Authorization header.
+
+  <Note>
+  If not set, the API endpoints are publicly accessible without authentication.
+  </Note>
+
+  **Example:**
+  ```bash
+  export TOKEN="your-secret-token-here"
+  ```
+
+  See the [Authentication](/configuration/authentication) page for more details on how to use this token.
+</ParamField>
+
+<ParamField path="DL_SESSION" type="string" default="">
+  DeepL Pro account session cookie for the `/v1/translate` endpoint. This is required to use the Pro API endpoint which provides access to DeepL Pro features.
+
+  <Warning>
+  This must be a valid Pro account session. Free account sessions (containing a `.` character) will be rejected.
+  </Warning>
+
+  **Example:**
+  ```bash
+  export DL_SESSION="your-dl-session-cookie"
+  ```
+</ParamField>
+
+## Network Configuration
+
+<ParamField path="PROXY" type="string" default="">
+  HTTP/HTTPS proxy URL for outgoing requests to DeepL. Useful when DeepLX needs to route traffic through a proxy server.
+
+  **Example:**
+  ```bash
+  # HTTP proxy
+  export PROXY="http://proxy.example.com:8080"
+
+  # HTTPS proxy
+  export PROXY="https://proxy.example.com:8080"
+
+  # SOCKS5 proxy
+  export PROXY="socks5://proxy.example.com:1080"
+  ```
+</ParamField>
+
+## Complete Example
+
+<CodeGroup>
+```bash Docker
+# Using environment variables with Docker
+docker run -d \
+  -e IP="0.0.0.0" \
+  -e PORT=8080 \
+  -e TOKEN="my-secret-token" \
+  -e DL_SESSION="your-dl-session" \
+  -e PROXY="http://proxy.example.com:8080" \
+  -p 8080:8080 \
+  ghcr.io/owo-network/deeplx:latest
+```
+
+```bash Systemd
+# Environment file: /etc/deeplx/config.env
+IP=0.0.0.0
+PORT=1188
+TOKEN=my-secret-token
+DL_SESSION=your-dl-session
+PROXY=http://proxy.example.com:8080
+
+# Load with:
+systemctl edit deeplx --force
+# Add:
+[Service]
+EnvironmentFile=/etc/deeplx/config.env
+```
+
+```bash Shell
+# Export environment variables before running DeepLX
+export IP="0.0.0.0"
+export PORT=1188
+export TOKEN="my-secret-token"
+export DL_SESSION="your-dl-session"
+export PROXY="http://proxy.example.com:8080"
+
+./deeplx
+```
+</CodeGroup>
+
+<Info>
+Environment variables have lower precedence than command-line flags. If both are set, the flag value will be used.
+</Info>

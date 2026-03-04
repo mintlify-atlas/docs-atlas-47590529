@@ -1,0 +1,129 @@
+---
+title: Response Format
+description: Understanding the DeepLX translation response structure and fields
+---
+
+The DeepLX API returns translation results in a structured JSON format. All successful translations return an HTTP 200 status code with the complete `DeepLXTranslationResult` object.
+
+## Response Structure
+
+The response object contains the following fields:
+
+<ResponseField name="code" type="integer" required>
+  HTTP status code indicating the result of the translation request. Returns `200` for successful translations.
+</ResponseField>
+
+<ResponseField name="id" type="integer" required>
+  Unique identifier for the translation request. This ID is randomly generated for each request and can be used for tracking purposes.
+</ResponseField>
+
+<ResponseField name="data" type="string" required>
+  The primary translated text. This is the main translation result returned by DeepL.
+</ResponseField>
+
+<ResponseField name="alternatives" type="string[]" required>
+  An array of alternative translations. DeepL may provide up to 3 alternative translations for the same input text, offering different phrasings or word choices.
+</ResponseField>
+
+<ResponseField name="source_lang" type="string" required>
+  The detected or specified source language code in ISO 639-1 format (e.g., "EN", "DE", "FR"). If the request specified `auto` or an empty source language, this field contains the automatically detected language.
+</ResponseField>
+
+<ResponseField name="target_lang" type="string" required>
+  The target language code in ISO 639-1 format (e.g., "EN", "DE", "FR"). This matches the language specified in the translation request.
+</ResponseField>
+
+<ResponseField name="method" type="string" required>
+  Indicates the translation method used. Possible values:
+  - `"Free"` - Translation performed using the free DeepL API method
+  - `"Pro"` - Translation performed using a DeepL Pro account with `dl_session` cookie
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Error or status message. This field is only present when an error occurs or when additional information needs to be conveyed. It is omitted in successful responses.
+</ResponseField>
+
+## Success Response Example
+
+<CodeGroup>
+```json Free API Response
+{
+  "code": 200,
+  "id": 8352948020,
+  "data": "Hello, World!",
+  "alternatives": [
+    "Hi, World!",
+    "Hello World!",
+    "Greetings, World!"
+  ],
+  "source_lang": "DE",
+  "target_lang": "EN",
+  "method": "Free"
+}
+```
+
+```json Pro API Response
+{
+  "code": 200,
+  "id": 8352948021,
+  "data": "Bonjour le monde!",
+  "alternatives": [
+    "Salut le monde!",
+    "Bonjour tout le monde!"
+  ],
+  "source_lang": "EN",
+  "target_lang": "FR",
+  "method": "Pro"
+}
+```
+</CodeGroup>
+
+## Alternatives Array
+
+The `alternatives` array provides additional translation options:
+
+<Note>
+  DeepLX requests up to 3 alternatives from the DeepL API by setting `requestAlternatives: 3` in the translation request. The actual number of alternatives returned may vary depending on the input text and language pair.
+</Note>
+
+<Accordion title="How alternatives are populated">
+  The alternatives are extracted from the DeepL API response structure:
+  
+  1. The API response contains a `texts` array with translation results
+  2. Each text object has an `alternatives` array field
+  3. DeepLX extracts the `text` field from each alternative object
+  4. Only non-empty alternative texts are included in the final response
+  
+  If no alternatives are available, the array will be empty `[]`.
+</Accordion>
+
+## Language Detection
+
+<ResponseField name="source_lang" type="string">
+  When automatic language detection is used (by specifying `"auto"` or an empty string for `source_lang` in the request), DeepLX uses the `whatlanggo` library to detect the input language.
+  
+  The detected language is then:
+  1. Used in the translation request to DeepL
+  2. May be overridden by DeepL's own language detection
+  3. Returned in the response's `source_lang` field
+</ResponseField>
+
+<Warning>
+  If the DeepL API returns a detected language in the response (`result.lang`), it will override the initially detected language. This ensures the most accurate source language is reported.
+</Warning>
+
+## Method Field
+
+The `method` field indicates which translation endpoint was used:
+
+| Method | Description | Endpoint |
+|--------|-------------|----------|
+| `Free` | Uses the free DeepL translation service without authentication | `/translate`, `/v2/translate` |
+| `Pro` | Uses DeepL Pro account with `dl_session` cookie for enhanced features | `/v1/translate` |
+
+<Note>
+  The method is determined by checking if a `dl_session` value was provided in the request. From `translate/translate.go:201`:
+  ```go
+  Method: map[bool]string{true: "Pro", false: "Free"}[dlSession != ""]
+  ```
+</Note>

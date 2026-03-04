@@ -1,0 +1,204 @@
+---
+title: 'POST /translate'
+description: 'Free translation endpoint with no Pro account required'
+---
+
+## Endpoint
+
+```
+POST /translate
+```
+
+This is the free translation endpoint that works without a DeepL Pro account. It uses the DeepL free API to translate text between supported languages.
+
+## Authentication
+
+If an access token is configured on the server, include it in one of the following ways:
+
+<Tabs>
+  <Tab title="Query Parameter">
+    ```bash
+    POST /translate?token=your_access_token
+    ```
+  </Tab>
+  <Tab title="Authorization Header">
+    ```bash
+    Authorization: Bearer your_access_token
+    # or
+    Authorization: DeepL-Auth-Key your_access_token
+    ```
+  </Tab>
+</Tabs>
+
+## Request Body
+
+<ParamField body="text" type="string" required>
+  The text to be translated. Can contain multiple sentences or paragraphs.
+</ParamField>
+
+<ParamField body="source_lang" type="string" required>
+  The source language code (e.g., "EN", "DE", "FR", "ZH"). Use "auto" for automatic detection.
+</ParamField>
+
+<ParamField body="target_lang" type="string" required>
+  The target language code (e.g., "EN", "DE", "FR", "ZH").
+</ParamField>
+
+<ParamField body="tag_handling" type="string">
+  Specifies how to handle tags in the text. Allowed values: `html` or `xml`. Leave empty for plain text.
+</ParamField>
+
+## Response
+
+<ResponseField name="code" type="number">
+  HTTP status code (200 for success)
+</ResponseField>
+
+<ResponseField name="id" type="number">
+  Unique identifier for the translation request
+</ResponseField>
+
+<ResponseField name="data" type="string">
+  The primary translated text
+</ResponseField>
+
+<ResponseField name="alternatives" type="array">
+  Array of alternative translations
+</ResponseField>
+
+<ResponseField name="source_lang" type="string">
+  Detected or specified source language
+</ResponseField>
+
+<ResponseField name="target_lang" type="string">
+  Target language for the translation
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  Translation method used by the API
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:1188/translate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "DE"
+  }'
+```
+
+```bash cURL with Token
+curl -X POST http://localhost:1188/translate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_access_token" \
+  -d '{
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "DE"
+  }'
+```
+
+```bash cURL with HTML Tags
+curl -X POST http://localhost:1188/translate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "<p>Hello, world!</p>",
+    "source_lang": "EN",
+    "target_lang": "DE",
+    "tag_handling": "html"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:1188/translate"
+payload = {
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "DE"
+}
+
+response = requests.post(url, json=payload)
+print(response.json())
+```
+
+```javascript JavaScript
+fetch('http://localhost:1188/translate', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    text: 'Hello, world!',
+    source_lang: 'EN',
+    target_lang: 'DE'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "code": 200,
+  "id": 1234567890,
+  "data": "Hallo, Welt!",
+  "alternatives": [
+    "Hallo Welt!",
+    "Servus, Welt!"
+  ],
+  "source_lang": "EN",
+  "target_lang": "DE",
+  "method": "Free"
+}
+```
+
+## Error Responses
+
+<Accordion title="400 Bad Request - Invalid tag_handling">
+  ```json
+  {
+    "code": 400,
+    "message": "Invalid tag_handling value. Allowed values are 'html' and 'xml'."
+  }
+  ```
+  
+  Returned when `tag_handling` is set to a value other than `html` or `xml`.
+</Accordion>
+
+<Accordion title="401 Unauthorized - Invalid Token">
+  ```json
+  {
+    "code": 401,
+    "message": "Invalid access token"
+  }
+  ```
+  
+  Returned when the provided access token doesn't match the server configuration.
+</Accordion>
+
+<Accordion title="429 Too Many Requests">
+  ```json
+  {
+    "code": 429,
+    "message": "Too many requests"
+  }
+  ```
+  
+  Returned when rate limits are exceeded.
+</Accordion>
+
+## Notes
+
+- This endpoint uses the DeepL free API and does not require a Pro account
+- Source language can be set to "auto" for automatic detection
+- The `alternatives` field provides additional translation options
+- Tag handling is useful for preserving HTML or XML structure in translated text

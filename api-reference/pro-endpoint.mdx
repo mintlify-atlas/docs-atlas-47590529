@@ -1,0 +1,243 @@
+---
+title: 'POST /v1/translate'
+description: 'Pro translation endpoint requiring a DeepL Pro account session'
+---
+
+## Endpoint
+
+```
+POST /v1/translate
+```
+
+This endpoint requires a DeepL Pro account and uses the `dl_session` cookie for authentication. It provides enhanced translation capabilities available to Pro users.
+
+## Authentication
+
+### Access Token
+
+If an access token is configured on the server, include it in one of the following ways:
+
+<Tabs>
+  <Tab title="Query Parameter">
+    ```bash
+    POST /v1/translate?token=your_access_token
+    ```
+  </Tab>
+  <Tab title="Authorization Header">
+    ```bash
+    Authorization: Bearer your_access_token
+    # or
+    Authorization: DeepL-Auth-Key your_access_token
+    ```
+  </Tab>
+</Tabs>
+
+### DeepL Pro Session
+
+<ParamField header="Cookie" type="string" required>
+  DeepL Pro session cookie: `dl_session=your_session_value`
+  
+  **Important:** The session value must NOT contain a period (`.`). Sessions with periods indicate free accounts, not Pro accounts.
+</ParamField>
+
+<Accordion title="How to get your dl_session cookie">
+  1. Log in to your DeepL Pro account at https://www.deepl.com
+  2. Open browser Developer Tools (F12)
+  3. Go to the Application/Storage tab
+  4. Find Cookies → https://www.deepl.com
+  5. Copy the value of the `dl_session` cookie
+  6. Include it in the `Cookie` header of your requests
+</Accordion>
+
+## Request Body
+
+<ParamField body="text" type="string" required>
+  The text to be translated. Can contain multiple sentences or paragraphs.
+</ParamField>
+
+<ParamField body="source_lang" type="string" required>
+  The source language code (e.g., "EN", "DE", "FR", "ZH"). Use "auto" for automatic detection.
+</ParamField>
+
+<ParamField body="target_lang" type="string" required>
+  The target language code (e.g., "EN", "DE", "FR", "ZH").
+</ParamField>
+
+<ParamField body="tag_handling" type="string">
+  Specifies how to handle tags in the text. Allowed values: `html` or `xml`. Leave empty for plain text.
+</ParamField>
+
+## Response
+
+<ResponseField name="code" type="number">
+  HTTP status code (200 for success)
+</ResponseField>
+
+<ResponseField name="id" type="number">
+  Unique identifier for the translation request
+</ResponseField>
+
+<ResponseField name="data" type="string">
+  The primary translated text
+</ResponseField>
+
+<ResponseField name="alternatives" type="array">
+  Array of alternative translations
+</ResponseField>
+
+<ResponseField name="source_lang" type="string">
+  Detected or specified source language
+</ResponseField>
+
+<ResponseField name="target_lang" type="string">
+  Target language for the translation
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  Translation method used by the API ("Pro" for this endpoint)
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:1188/v1/translate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: dl_session=your_session_value" \
+  -d '{
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "DE"
+  }'
+```
+
+```bash cURL with Token and Session
+curl -X POST http://localhost:1188/v1/translate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_access_token" \
+  -H "Cookie: dl_session=your_session_value" \
+  -d '{
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "DE"
+  }'
+```
+
+```bash cURL with HTML Tags
+curl -X POST http://localhost:1188/v1/translate \
+  -H "Content-Type: application/json" \
+  -H "Cookie: dl_session=your_session_value" \
+  -d '{
+    "text": "<p>Hello, world!</p>",
+    "source_lang": "EN",
+    "target_lang": "DE",
+    "tag_handling": "html"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:1188/v1/translate"
+headers = {
+    "Content-Type": "application/json",
+    "Cookie": "dl_session=your_session_value"
+}
+payload = {
+    "text": "Hello, world!",
+    "source_lang": "EN",
+    "target_lang": "DE"
+}
+
+response = requests.post(url, headers=headers, json=payload)
+print(response.json())
+```
+
+```javascript JavaScript
+fetch('http://localhost:1188/v1/translate', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Cookie': 'dl_session=your_session_value'
+  },
+  body: JSON.stringify({
+    text: 'Hello, world!',
+    source_lang: 'EN',
+    target_lang: 'DE'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "code": 200,
+  "id": 1234567890,
+  "data": "Hallo, Welt!",
+  "alternatives": [
+    "Hallo Welt!",
+    "Servus, Welt!"
+  ],
+  "source_lang": "EN",
+  "target_lang": "DE",
+  "method": "Pro"
+}
+```
+
+## Error Responses
+
+<Accordion title="400 Bad Request - Invalid tag_handling">
+  ```json
+  {
+    "code": 400,
+    "message": "Invalid tag_handling value. Allowed values are 'html' and 'xml'."
+  }
+  ```
+  
+  Returned when `tag_handling` is set to a value other than `html` or `xml`.
+</Accordion>
+
+<Accordion title="401 Unauthorized - No Session">
+  ```json
+  {
+    "code": 401,
+    "message": "No dl_session Found"
+  }
+  ```
+  
+  Returned when no `dl_session` cookie is provided in the request.
+</Accordion>
+
+<Accordion title="401 Unauthorized - Not a Pro Account">
+  ```json
+  {
+    "code": 401,
+    "message": "Your account is not a Pro account. Please upgrade your account or switch to a different account."
+  }
+  ```
+  
+  Returned when the `dl_session` contains a period (`.`), indicating a free account rather than a Pro account.
+</Accordion>
+
+<Accordion title="401 Unauthorized - Invalid Token">
+  ```json
+  {
+    "code": 401,
+    "message": "Invalid access token"
+  }
+  ```
+  
+  Returned when the provided access token doesn't match the server configuration.
+</Accordion>
+
+## Notes
+
+- **Requires DeepL Pro Account:** This endpoint only works with valid Pro account sessions
+- **Session Validation:** Free account sessions (containing `.`) are rejected
+- **Cookie Priority:** If both config `dl_session` and request `Cookie` header are provided, the header takes precedence
+- **Enhanced Quality:** Pro accounts provide higher quality translations and additional features
+- The `alternatives` field provides multiple translation options for better context

@@ -1,0 +1,143 @@
+---
+title: Command-Line Flags
+description: Configure DeepLX using command-line arguments
+---
+
+DeepLX can be configured using command-line flags when starting the application. Flags take precedence over environment variables.
+
+## Server Configuration
+
+<ParamField path="-ip" type="string" default="0.0.0.0">
+  Set the IP address to bind to. Short form: `-i`
+
+  **Example:**
+  ```bash
+  ./deeplx -ip 127.0.0.1
+  # or using short form
+  ./deeplx -i 127.0.0.1
+  ```
+
+  <Info>
+  Use `0.0.0.0` to listen on all interfaces, or `127.0.0.1` to only accept local connections.
+  </Info>
+</ParamField>
+
+<ParamField path="-port" type="integer" default="1188">
+  Set the port to listen on. Short form: `-p`
+
+  **Example:**
+  ```bash
+  ./deeplx -port 8080
+  # or using short form
+  ./deeplx -p 8080
+  ```
+</ParamField>
+
+## Authentication
+
+<ParamField path="-token" type="string" default="">
+  Set the access token for the `/translate` endpoints. When configured, all API requests must include this token for authentication.
+
+  **Example:**
+  ```bash
+  ./deeplx -token "your-secret-token"
+  ```
+
+  <Note>
+  The token can be provided by clients via query parameter `?token=xxx` or Authorization header. See [Authentication](/configuration/authentication) for details.
+  </Note>
+</ParamField>
+
+<ParamField path="-s" type="string" default="">
+  Set the dl-session cookie for the `/v1/translate` Pro endpoint. This flag has no long form.
+
+  **Example:**
+  ```bash
+  ./deeplx -s "your-dl-session-cookie"
+  ```
+
+  <Warning>
+  This must be from a DeepL Pro account. Free account sessions (containing a `.`) will be rejected.
+  </Warning>
+</ParamField>
+
+## Network Configuration
+
+<ParamField path="-proxy" type="string" default="">
+  Set the proxy URL for HTTP requests to DeepL.
+
+  **Example:**
+  ```bash
+  # HTTP proxy
+  ./deeplx -proxy "http://proxy.example.com:8080"
+
+  # HTTPS proxy
+  ./deeplx -proxy "https://proxy.example.com:8080"
+
+  # SOCKS5 proxy
+  ./deeplx -proxy "socks5://proxy.example.com:1080"
+  ```
+</ParamField>
+
+## Complete Examples
+
+<CodeGroup>
+```bash Basic
+# Start DeepLX with custom port
+./deeplx -port 8080
+```
+
+```bash With Authentication
+# Start with token protection
+./deeplx -ip 0.0.0.0 -port 1188 -token "my-secret-token"
+```
+
+```bash Pro Endpoint
+# Enable Pro endpoint with dl-session
+./deeplx -s "your-dl-session" -token "api-token"
+```
+
+```bash Full Configuration
+# All options combined
+./deeplx \
+  -ip "0.0.0.0" \
+  -port 8080 \
+  -token "my-secret-token" \
+  -s "your-dl-session" \
+  -proxy "http://proxy.example.com:8080"
+```
+
+```bash Short Forms
+# Using short form flags where available
+./deeplx -i 127.0.0.1 -p 8080 -s "dl-session" -token "token"
+```
+</CodeGroup>
+
+## Flag Precedence
+
+<Info>
+Command-line flags take precedence over environment variables. If both are set, the flag value will be used.
+</Info>
+
+**Example:**
+```bash
+# Environment variable sets PORT=1188
+export PORT=1188
+
+# Flag overrides it to 8080
+./deeplx -port 8080
+
+# Server will listen on port 8080
+```
+
+## Available Short Forms
+
+| Long Form | Short Form | Purpose |
+|-----------|------------|----------|
+| `-ip`     | `-i`       | IP address to bind |
+| `-port`   | `-p`       | Port to listen on |
+| N/A       | `-s`       | DL session cookie |
+
+<Note>
+The `-token` and `-proxy` flags do not have short forms.
+</Note>

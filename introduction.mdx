@@ -1,0 +1,84 @@
+---
+title: Introduction
+description: Free DeepL translation API with no account required
+---
+
+DeepLX is a free, open-source API for DeepL translation that requires no DeepL account. It provides a simple HTTP interface to translate text using DeepL's translation engine.
+
+## What is DeepLX?
+
+DeepLX acts as a reverse-engineered API wrapper for DeepL's free translation service. It allows you to integrate high-quality translations into your applications without authentication or API keys (unless you configure them).
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="No Account Required" icon="user-slash">
+    Use DeepL translations without signing up for a DeepL account
+  </Card>
+  <Card title="Multiple API Formats" icon="code">
+    Three endpoint formats: `/translate`, `/v1/translate` (Pro), and `/v2/translate` (official format)
+  </Card>
+  <Card title="Language Auto-Detection" icon="language">
+    Automatically detects source language when not specified
+  </Card>
+  <Card title="Translation Alternatives" icon="list">
+    Returns up to 3 alternative translations for each request
+  </Card>
+  <Card title="Optional Authentication" icon="lock">
+    Secure your instance with access tokens
+  </Card>
+  <Card title="Proxy Support" icon="globe">
+    Route requests through HTTP proxies
+  </Card>
+</CardGroup>
+
+## Why Use DeepLX?
+
+**Free Access**: No need to purchase DeepL API credits or manage account quotas.
+
+**Simple Integration**: REST API with straightforward JSON request/response format.
+
+**Self-Hosted**: Run your own translation service with full control over deployment.
+
+**Docker Ready**: Pre-built Docker images available at `missuo/deeplx` for easy deployment.
+
+## How It Works
+
+DeepLX sends translation requests to DeepL's public endpoints with properly formatted payloads. The service handles:
+
+- Language detection using the `whatlanggo` library
+- Request formatting with proper timestamps and structure (service/service.go:129)
+- Response parsing to extract translations and alternatives (translate/types.go:126-135)
+- Multiple API endpoint formats for compatibility
+
+<Note>
+  DeepLX uses the free DeepL service. For high-volume production use, consider DeepL's official API or configure DeepLX with a Pro account session.
+</Note>
+
+## Supported Endpoints
+
+| Endpoint | Description | Account Required |
+|----------|-------------|------------------|
+| `/translate` | Free API endpoint | No |
+| `/v1/translate` | Pro API endpoint | Yes (dl_session) |
+| `/v2/translate` | Official API format | No |
+
+## Response Format
+
+All successful translation requests return:
+
+```json translate/types.go:126-135
+{
+  "code": 200,
+  "id": 8912375012,
+  "data": "translated text",
+  "alternatives": ["alternative 1", "alternative 2"],
+  "source_lang": "EN",
+  "target_lang": "DE",
+  "method": "Free"
+}
+```
+
+<Info>
+  The `alternatives` field provides different translation options, giving you flexibility in choosing the best phrasing.
+</Info>

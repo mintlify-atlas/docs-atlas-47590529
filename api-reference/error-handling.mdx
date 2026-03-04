@@ -1,0 +1,349 @@
+---
+title: Error Handling
+description: HTTP status codes, error messages, and troubleshooting for the DeepLX API
+---
+
+The DeepLX API uses standard HTTP status codes to indicate the success or failure of requests. Error responses include a `code` field matching the HTTP status and a descriptive `message` field.
+
+## Error Response Format
+
+All error responses follow this structure:
+
+```json
+{
+  "code": 400,
+  "message": "Error description"
+}
+```
+
+## HTTP Status Codes
+
+### 200 OK
+
+Successful translation request. The response includes the full `DeepLXTranslationResult` object with translated text and alternatives.
+
+```json
+{
+  "code": 200,
+  "id": 8352948020,
+  "data": "Hello, World!",
+  "alternatives": ["Hi, World!", "Hello World!"],
+  "source_lang": "DE",
+  "target_lang": "EN",
+  "method": "Free"
+}
+```
+
+### 400 Bad Request
+
+The request was malformed or contained invalid parameters.
+
+<CodeGroup>
+```json Invalid tag_handling
+{
+  "code": 400,
+  "message": "Invalid tag_handling value. Allowed values are 'html' and 'xml'."
+}
+```
+
+```json Invalid request payload
+{
+  "code": 400,
+  "message": "Invalid request payload"
+}
+```
+</CodeGroup>
+
+<Accordion title="When does 400 occur?">
+  **Source:** `service/service.go:121-126`, `service/service.go:166-170`, `service/service.go:233-237`
+  
+  A 400 error is returned when:
+  - The `tag_handling` parameter is provided but is not `"html"` or `"xml"`
+  - The request body cannot be parsed as valid JSON
+  - Required fields are missing from the request payload (e.g., `text` or `target_lang` in `/v2/translate`)
+</Accordion>
+
+### 401 Unauthorized
+
+Authentication failed or required credentials are missing.
+
+<CodeGroup>
+```json Invalid Access Token
+{
+  "code": 401,
+  "message": "Invalid access token"
+}
+```
+
+```json Missing dl_session
+{
+  "code": 401,
+  "message": "No dl_session Found"
+}
+```
+
+```json Free Account Used for Pro Endpoint
+{
+  "code": 401,
+  "message": "Your account is not a Pro account. Please upgrade your account or switch to a different account."
+}
+```
+</CodeGroup>
+
+<Accordion title="When does 401 occur?">
+  **Source:** `service/service.go:50-56`, `service/service.go:179-190`
+  
+  Authentication errors occur when:
+  
+  1. **Invalid access token** - When the server is configured with a `token`, requests must provide a matching token via:
+     - Query parameter: `?token=YOUR_TOKEN`
+     - Header: `Authorization: Bearer YOUR_TOKEN`
+     - Header: `Authorization: DeepL-Auth-Key YOUR_TOKEN`
+  
+  2. **Missing dl_session** - The `/v1/translate` Pro endpoint requires a `dl_session` cookie, provided via:
+     - Configuration file
+     - HTTP `Cookie` header: `Cookie: dl_session=YOUR_SESSION`
+  
+  3. **Free account on Pro endpoint** - If the `dl_session` contains a period (`.`), it indicates a free DeepL account, which cannot be used with the Pro endpoint.
+</Accordion>
+
+<Warning>
+  The Pro endpoint (`/v1/translate`) validates that the provided `dl_session` is from a Pro account by checking if it contains a period. Free account sessions contain `.` and will be rejected.
+</Warning>
+
+### 404 Not Found
+
+The requested endpoint does not exist, or no text was provided for translation.
+
+<CodeGroup>
+```json No Text Provided
+{
+  "code": 404,
+  "message": "No text to translate"
+}
+```
+
+```json Invalid Endpoint
+{
+  "code": 404,
+  "message": "Path not found"
+}
+```
+</CodeGroup>
+
+<Accordion title="When does 404 occur?">
+  **Source:** `translate/translate.go:112-117`, `service/service.go:267-272`
+  
+  404 errors occur when:
+  - The `text` field in the request is empty or missing
+  - An undefined API endpoint is accessed (caught by the `NoRoute` handler)
+</Accordion>
+
+<Note>
+  The root endpoint (`/`) returns 200 with a welcome message and GitHub link. Only undefined paths trigger the 404 "Path not found" error.
+</Note>
+
+### 429 Too Many Requests
+
+The request rate limit has been exceeded and the IP address has been temporarily blocked by DeepL.
+
+```json
+{
+  "code": 429,
+  "message": "too many requests, your IP has been blocked by DeepL temporarily, please don't request it frequently in a short time"
+}
+```
+
+<Accordion title="When does 429 occur?">
+  **Source:** `translate/translate.go:78-80`
+  
+  This error occurs when:
+  - DeepL's rate limiting detects too many requests from the same IP address
+  - The upstream DeepL API returns HTTP 429
+  - This is a temporary block that typically resolves after some time
+</Accordion>
+
+<Warning>
+  Rate limiting is enforced by DeepL's servers, not by DeepLX. If you receive a 429 error:
+  - Wait before retrying (recommended: exponential backoff)
+  - Consider using a proxy to distribute requests across multiple IPs
+  - Reduce request frequency
+</Warning>
+
+### 503 Service Unavailable
+
+The translation request failed due to upstream service issues or invalid responses.
+
+<CodeGroup>
+```json Translation Failed - Empty Response
+{
+  "code": 503,
+  "message": "Translation failed"
+}
+```
+
+```json Network Error
+{
+  "code": 503,
+  "message": "request failed with status code: 500"
+}
+```
+
+```json Upstream Error
+{
+  "code": 503,
+  "message": "failed to read response body: unexpected EOF"
+}
+```
+</CodeGroup>
+
+<Accordion title="When does 503 occur?">
+  **Source:** `translate/translate.go:154-158`, `translate/translate.go:163-167`, `translate/translate.go:172-176`
+  
+  Service unavailable errors occur when:
+  
+  1. The request to DeepL's API fails (network error, timeout, non-200 status)
+  2. The response body cannot be read or decompressed
+  3. The DeepL API returns an empty `texts` array
+  4. The main translation text is empty in the response
+  
+  These are typically temporary issues with the upstream DeepL service.
+</Accordion>
+
+## Error Handling Best Practices
+
+<Warning>
+  **Fatal Errors in Service Layer**
+  
+  The service layer (`service/service.go:130`, `service/service.go:194`, `service/service.go:246`) calls `log.Fatalf()` if the translation function returns an error. This will terminate the entire server process.
+  
+  In production deployments, ensure your process manager (systemd, Docker, k8s) automatically restarts the service if it crashes.
+</Warning>
+
+### Retry Strategy
+
+<CodeGroup>
+```javascript Example Retry Logic
+const translateWithRetry = async (text, targetLang, maxRetries = 3) => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch('http://localhost:1188/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          source_lang: 'auto',
+          target_lang: targetLang
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.code === 200) {
+        return result;
+      }
+      
+      // Don't retry on client errors (4xx)
+      if (result.code >= 400 && result.code < 500 && result.code !== 429) {
+        throw new Error(result.message);
+      }
+      
+      // Retry on 429 and 503 with exponential backoff
+      if (result.code === 429 || result.code === 503) {
+        await new Promise(resolve => 
+          setTimeout(resolve, Math.pow(2, attempt) * 1000)
+        );
+        continue;
+      }
+      
+      throw new Error(result.message);
+    } catch (error) {
+      if (attempt === maxRetries - 1) throw error;
+    }
+  }
+};
+```
+
+```python Python Retry Example
+import time
+import requests
+from typing import Optional
+
+def translate_with_retry(text: str, target_lang: str, max_retries: int = 3) -> dict:
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                'http://localhost:1188/translate',
+                json={
+                    'text': text,
+                    'source_lang': 'auto',
+                    'target_lang': target_lang
+                }
+            )
+            result = response.json()
+            
+            if result['code'] == 200:
+                return result
+            
+            # Don't retry on client errors (4xx) except 429
+            if 400 <= result['code'] < 500 and result['code'] != 429:
+                raise Exception(result['message'])
+            
+            # Retry on 429 and 503 with exponential backoff
+            if result['code'] in [429, 503]:
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+            
+            raise Exception(result['message'])
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise e
+```
+</CodeGroup>
+
+<Note>
+  **Recommended retry strategy:**
+  - Retry on `429` (rate limit) and `503` (service unavailable)
+  - Use exponential backoff (1s, 2s, 4s, etc.)
+  - Do NOT retry on `400`, `401`, or `404` (client errors that won't resolve with retrying)
+  - Maximum of 3-5 retry attempts
+</Note>
+
+## Debugging Tips
+
+<Accordion title="Enable verbose logging">
+  DeepLX uses the standard Go `log` package. To see detailed logs including fatal errors:
+  
+  ```bash
+  # Run with stdout logging
+  ./deeplx
+  
+  # Or redirect to a file
+  ./deeplx 2>&1 | tee deeplx.log
+  ```
+</Accordion>
+
+<Accordion title="Test endpoints with curl">
+  ```bash
+  # Test the free endpoint
+  curl -X POST http://localhost:1188/translate \
+    -H "Content-Type: application/json" \
+    -d '{
+      "text": "Hello, World!",
+      "source_lang": "EN",
+      "target_lang": "DE"
+    }'
+  
+  # Test with authentication
+  curl -X POST http://localhost:1188/translate?token=YOUR_TOKEN \
+    -H "Content-Type: application/json" \
+    -d '{"text": "Hello", "source_lang": "EN", "target_lang": "FR"}'
+  
+  # Test Pro endpoint
+  curl -X POST http://localhost:1188/v1/translate \
+    -H "Content-Type: application/json" \
+    -H "Cookie: dl_session=YOUR_SESSION" \
+    -d '{"text": "Test", "target_lang": "ES"}'
+  ```
+</Accordion>

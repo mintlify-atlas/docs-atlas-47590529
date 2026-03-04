@@ -1,0 +1,443 @@
+---
+title: systemd Service Setup
+description: Configure DeepLX as a systemd service for automatic startup and management
+---
+
+## systemd Service Configuration
+
+DeepLX can be configured as a systemd service for automatic startup, restart on failure, and easy management on Linux systems.
+
+### Automatic Setup
+
+The systemd service is automatically installed when using the [installation script](/deployment/binary#automated-installation):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/OwO-Network/DeepLX/main/install.sh | bash
+```
+
+This will:
+- Download the systemd service file to `/etc/systemd/system/deeplx.service`
+- Reload the systemd daemon
+- Enable the service to start on boot
+- Start the DeepLX service
+
+### Manual Setup
+
+If you prefer to set up the systemd service manually:
+
+<Steps>
+  <Step title="Create the service file">
+    Download the official service file:
+
+    ```bash
+    sudo wget -O /etc/systemd/system/deeplx.service https://raw.githubusercontent.com/OwO-Network/DeepLX/main/deeplx.service
+    ```
+
+    Or create it manually:
+
+    ```ini /etc/systemd/system/deeplx.service
+    [Unit]
+    Description=DeepLX Service
+    After=network.target
+
+    [Service]
+    Type=simple
+    Restart=always
+    WorkingDirectory=/usr/bin/
+    ExecStart=/usr/bin/deeplx
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+  </Step>
+
+  <Step title="Reload systemd daemon">
+    ```bash
+    sudo systemctl daemon-reload
+    ```
+  </Step>
+
+  <Step title="Enable and start the service">
+    ```bash
+    sudo systemctl enable deeplx
+    sudo systemctl start deeplx
+    ```
+  </Step>
+
+  <Step title="Verify the service is running">
+    ```bash
+    sudo systemctl status deeplx
+    ```
+  </Step>
+</Steps>
+
+## Service File Breakdown
+
+The DeepLX systemd service file contains the following sections:
+
+### [Unit] Section
+
+```ini
+[Unit]
+Description=DeepLX Service
+After=network.target
+```
+
+- **Description**: Human-readable description of the service
+- **After**: Ensures DeepLX starts only after the network is available
+
+### [Service] Section
+
+```ini
+[Service]
+Type=simple
+Restart=always
+WorkingDirectory=/usr/bin/
+ExecStart=/usr/bin/deeplx
+```
+
+- **Type=simple**: The process started is the main service process
+- **Restart=always**: Automatically restart the service if it crashes or stops
+- **WorkingDirectory**: Sets the working directory to `/usr/bin/`
+- **ExecStart**: Path to the DeepLX binary
+
+### [Install] Section
+
+```ini
+[Install]
+WantedBy=multi-user.target
+```
+
+- **WantedBy**: Specifies when the service should be started (at multi-user runlevel)
+
+## Customizing the Service
+
+You can customize the service file to add environment variables, command-line options, or other configurations.
+
+### Adding Environment Variables
+
+<Steps>
+  <Step title="Edit the service file">
+    ```bash
+    sudo systemctl edit --full deeplx
+    ```
+  </Step>
+
+  <Step title="Add environment variables">
+    Modify the `[Service]` section:
+
+    ```ini
+    [Service]
+    Type=simple
+    Restart=always
+    WorkingDirectory=/usr/bin/
+    Environment="IP=0.0.0.0"
+    Environment="PORT=1188"
+    Environment="TOKEN=your_token_here"
+    Environment="DL_SESSION=your_session_here"
+    Environment="PROXY=http://proxy:8080"
+    ExecStart=/usr/bin/deeplx
+    ```
+
+    <Warning>
+      Avoid storing sensitive tokens directly in the service file. Consider using systemd's `EnvironmentFile` directive to load variables from a protected file.
+    </Warning>
+  </Step>
+
+  <Step title="Reload and restart">
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl restart deeplx
+    ```
+  </Step>
+</Steps>
+
+### Using an Environment File
+
+For better security, store environment variables in a separate file:
+
+<Steps>
+  <Step title="Create an environment file">
+    ```bash
+    sudo nano /etc/deeplx/config.env
+    ```
+
+    Add your configuration:
+    ```bash
+    IP=0.0.0.0
+    PORT=1188
+    TOKEN=your_token_here
+    DL_SESSION=your_session_here
+    PROXY=http://proxy:8080
+    ```
+  </Step>
+
+  <Step title="Secure the file">
+    ```bash
+    sudo chmod 600 /etc/deeplx/config.env
+    sudo chown root:root /etc/deeplx/config.env
+    ```
+  </Step>
+
+  <Step title="Update the service file">
+    ```bash
+    sudo systemctl edit --full deeplx
+    ```
+
+    Add `EnvironmentFile` to the `[Service]` section:
+    ```ini
+    [Service]
+    Type=simple
+    Restart=always
+    WorkingDirectory=/usr/bin/
+    EnvironmentFile=/etc/deeplx/config.env
+    ExecStart=/usr/bin/deeplx
+    ```
+  </Step>
+
+  <Step title="Reload and restart">
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl restart deeplx
+    ```
+  </Step>
+</Steps>
+
+### Adding Command-Line Options
+
+You can also configure DeepLX using command-line flags:
+
+```ini
+[Service]
+Type=simple
+Restart=always
+WorkingDirectory=/usr/bin/
+ExecStart=/usr/bin/deeplx --ip 0.0.0.0 --port 1188 --token mytoken
+```
+
+<Note>
+  Command-line flags take precedence over environment variables.
+</Note>
+
+## Service Management Commands
+
+Common systemd commands for managing the DeepLX service:
+
+<CodeGroup>
+  ```bash Start Service
+  sudo systemctl start deeplx
+  ```
+
+  ```bash Stop Service
+  sudo systemctl stop deeplx
+  ```
+
+  ```bash Restart Service
+  sudo systemctl restart deeplx
+  ```
+
+  ```bash Check Status
+  sudo systemctl status deeplx
+  ```
+
+  ```bash Enable Auto-start
+  sudo systemctl enable deeplx
+  ```
+
+  ```bash Disable Auto-start
+  sudo systemctl disable deeplx
+  ```
+
+  ```bash View Logs
+  sudo journalctl -u deeplx -f
+  ```
+
+  ```bash View Recent Logs
+  sudo journalctl -u deeplx -n 100
+  ```
+
+  ```bash Reload Service File
+  sudo systemctl daemon-reload
+  ```
+</CodeGroup>
+
+## Logging and Monitoring
+
+### Viewing Logs
+
+DeepLX logs are managed by systemd's journal:
+
+<Tabs>
+  <Tab title="Follow Logs">
+    ```bash
+    sudo journalctl -u deeplx -f
+    ```
+    Shows logs in real-time (similar to `tail -f`)
+  </Tab>
+
+  <Tab title="Recent Logs">
+    ```bash
+    sudo journalctl -u deeplx -n 100
+    ```
+    Shows the last 100 log entries
+  </Tab>
+
+  <Tab title="Today's Logs">
+    ```bash
+    sudo journalctl -u deeplx --since today
+    ```
+  </Tab>
+
+  <Tab title="Logs Since Boot">
+    ```bash
+    sudo journalctl -u deeplx -b
+    ```
+  </Tab>
+
+  <Tab title="Time Range">
+    ```bash
+    sudo journalctl -u deeplx --since "2026-03-01" --until "2026-03-04"
+    ```
+  </Tab>
+</Tabs>
+
+### Service Status
+
+Check the current status of the DeepLX service:
+
+```bash
+sudo systemctl status deeplx
+```
+
+This shows:
+- Service state (active/inactive)
+- Process ID (PID)
+- Memory usage
+- Recent log entries
+- Uptime information
+
+## Troubleshooting
+
+### Service Fails to Start
+
+<Steps>
+  <Step title="Check the service status">
+    ```bash
+    sudo systemctl status deeplx
+    ```
+  </Step>
+
+  <Step title="View detailed logs">
+    ```bash
+    sudo journalctl -u deeplx -n 50
+    ```
+  </Step>
+
+  <Step title="Verify binary exists and is executable">
+    ```bash
+    ls -l /usr/bin/deeplx
+    ```
+    Should show `-rwxr-xr-x` permissions
+  </Step>
+
+  <Step title="Test the binary manually">
+    ```bash
+    /usr/bin/deeplx
+    ```
+  </Step>
+</Steps>
+
+### Service Keeps Restarting
+
+If the service is constantly restarting:
+
+```bash
+# Check restart count
+sudo systemctl show deeplx | grep NRestarts
+
+# View recent failures
+sudo journalctl -u deeplx --since "1 hour ago"
+```
+
+Common causes:
+- Port 1188 already in use
+- Invalid environment variables
+- Missing dependencies
+- Incorrect file permissions
+
+### Port Already in Use
+
+Check what's using port 1188:
+
+```bash
+sudo lsof -i :1188
+# or
+sudo netstat -tulpn | grep 1188
+```
+
+Either stop the conflicting service or change DeepLX's port using environment variables or command-line flags.
+
+## Advanced Configuration
+
+### Running as a Specific User
+
+For better security, run DeepLX as a non-root user:
+
+```ini
+[Service]
+Type=simple
+User=deeplx
+Group=deeplx
+Restart=always
+WorkingDirectory=/usr/bin/
+ExecStart=/usr/bin/deeplx
+```
+
+Create the user first:
+```bash
+sudo useradd -r -s /bin/false deeplx
+```
+
+### Resource Limits
+
+Limit resources used by the DeepLX service:
+
+```ini
+[Service]
+Type=simple
+Restart=always
+WorkingDirectory=/usr/bin/
+ExecStart=/usr/bin/deeplx
+MemoryLimit=512M
+CPUQuota=50%
+```
+
+### Restart Behavior
+
+Customize restart behavior:
+
+```ini
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5s
+StartLimitBurst=5
+StartLimitIntervalSec=60s
+WorkingDirectory=/usr/bin/
+ExecStart=/usr/bin/deeplx
+```
+
+- **Restart=on-failure**: Only restart on failures (not clean exits)
+- **RestartSec**: Wait 5 seconds before restarting
+- **StartLimitBurst**: Maximum 5 restart attempts
+- **StartLimitIntervalSec**: Within a 60-second window
+
+## File Locations
+
+| Component | Path | Description |
+|-----------|------|-------------|
+| Service File | `/etc/systemd/system/deeplx.service` | systemd service configuration |
+| Binary | `/usr/bin/deeplx` | DeepLX executable |
+| Working Directory | `/usr/bin/` | Runtime working directory |
+| Environment File | `/etc/deeplx/config.env` | Optional environment variables |
+| Logs | `journalctl -u deeplx` | systemd journal |
